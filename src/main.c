@@ -2,10 +2,12 @@
 #include <stdio.h>
 
 int main(int argc, char **argv) {
-	printf("Hello world: %s\n", "bart");
 	// be_node *node  = parse_be_stream("4:spam");
 	// be_node *p_int = parse_be_stream("i3e");
-	be_node *n_int = parse_be_stream("llee");
+	//
+	char *input = "li-3ell4:spami3eeee";
+	printf("INPUT: %s\n", input);
+	be_node *n_int = parse_be_stream(input);
 
 	if (n_int == NULL) {
 		printf("string is invalid");

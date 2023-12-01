@@ -10,9 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef char   *b_string;
-typedef int64_t b_integer;
-
 typedef struct be_scanner {
 	char *start;
 	char *current;
@@ -50,14 +47,16 @@ static char advance(be_scanner *scanner) {
 	return scanner->current[-1];
 }
 
-static void debug_scanner(be_scanner *scanner) {
+static char peek(be_scanner *scanner) { return *scanner->current; }
+
+static void debug_scanner(be_scanner *scanner, char *extra) {
 	printf("-----\n");
+	printf("extra: %s\n", extra);
 	printf("scanner->start: %s\n", scanner->start);
 	printf("scanner->current: %s\n", scanner->current);
+	printf("peek '%c'\n", peek(scanner));
 	printf("-----\n");
 }
-
-static char peek(be_scanner *scanner) { return *scanner->current; }
 
 static bool isAtEnd(be_scanner *scanner) { return *scanner->current == '\0'; }
 
@@ -73,30 +72,26 @@ static bool match(be_scanner *scanner, char expected) {
 }
 
 static be_node *parse_be_string(be_scanner *scanner) {
-	debug_scanner(scanner);
 	while (isdigit(peek(scanner))) {
 		advance(scanner);
-	}
-
-	if (peek(scanner) != ':') {
-		return NULL;
 	}
 
 	char *str_len = malloc(scanner->current - scanner->start);
 	str_len =
 		strncpy(str_len, scanner->start, scanner->current - scanner->start);
 
+	printf("str_len %s\n", str_len);
+
 	int n_chars = strtol(str_len, NULL, 10);
 	free(str_len);
 
-	// Advance the ':'
-	advance(scanner);
+	advance(scanner); // Consume the :
 
-	char *value = malloc(n_chars);
+	char *value = malloc(n_chars * sizeof(char));
 	value		= strncpy(value, scanner->current, n_chars);
+	printf("value %s\n", value);
 
 	scanner->current += n_chars;
-	scanner->start = scanner->current;
 
 	be_node *node		= create_be_node(STRING);
 	node->data.str_data = value;
@@ -108,7 +103,6 @@ static be_node *parse_be_number(be_scanner *scanner) {
 	if (!match(scanner, 'i')) {
 		return NULL;
 	}
-	debug_scanner(scanner);
 
 	char *begin_of_number = scanner->current;
 
@@ -155,40 +149,40 @@ static be_node *parse_be(be_scanner *scanner) {
 		if (c == 'l') {
 			root = parse_be_list(scanner);
 		}
-		advance(scanner);
-		scanner->start = scanner->current;
 	}
 	return root;
 }
 
 static be_node *parse_be_list(be_scanner *scanner) {
-	debug_scanner(scanner);
+	be_node *node		 = create_be_node(LIST);
+	node->data.list_data = NULL;
+
 	if (!match(scanner, 'l')) {
 		return NULL;
 	}
 
 	if (match(scanner, 'e')) {
-		return &(be_node){.type = LIST, .data = NULL};
+		return node;
 	}
 
 	int64_t	  capacity = 1;
 	be_node **nodes	   = malloc(sizeof(be_node *) * capacity);
 
 	int64_t index = 0;
-	while (!match(scanner, 'e')) {
-		char c = peek(scanner);
+	while (!match(scanner, 'e') && !isAtEnd(scanner)) {
+		scanner->start = scanner->current;
+		char c		   = peek(scanner);
+
 		if (isdigit(c)) {
 			nodes[index++] = parse_be_string(scanner);
-			scanner->start = scanner->current;
 		}
 		if (c == 'i') {
 			nodes[index++] = parse_be_number(scanner);
-			scanner->start = scanner->current;
 		}
 		if (c == 'l') {
 			nodes[index++] = parse_be_list(scanner);
-			scanner->start = scanner->current;
 		}
+
 		// Grow array with twice the cap
 		if (index == capacity) {
 			capacity *= 2;
@@ -201,10 +195,9 @@ static be_node *parse_be_list(be_scanner *scanner) {
 	}
 
 	advance(scanner);
-	// Add null terminator at the end
-	nodes[index] = NULL;
 
-	be_node *node		 = create_be_node(LIST);
+	// Add null terminator at the end
+	nodes[index]		 = NULL;
 	node->data.list_data = nodes;
 
 	return node;
@@ -223,19 +216,21 @@ be_node *parse_be_stream(char *be_string) {
 void pretty_print_node(be_node *node, int indent) {
 	switch (node->type) {
 	case STRING:
-		printf("%*sType: String - Value: %s\n", indent, "",
-			   node->data.str_data);
+		printf("Type: String - Value: %s\n", node->data.str_data);
 		break;
 	case NUMBER:
-		printf("%*sType: Number - Value: %ld\n", indent, "",
-			   node->data.int_data);
+		printf("Type: Number - Value: %ld\n", node->data.int_data);
 		break;
 	case LIST:
-		printf("%*sType: List - Value: \n", indent, "");
+		printf("Type: List - Value: \n");
 		be_node **data = node->data.list_data;
+		if (data == NULL) {
+			return;
+		}
+
 		for (int i = 0; data[i] != NULL; i++) {
 			printf("%*s|- ", indent, "");
-			pretty_print_node(data[i], indent + 1);
+			pretty_print_node(data[i], indent + 3);
 		}
 		break;
 	case DICT:
