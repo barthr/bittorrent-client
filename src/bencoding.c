@@ -22,26 +22,6 @@ static void be_scanner_free(be_scanner *scanner) {
 	free(scanner);
 }
 
-static be_node *create_be_node(be_type type) {
-	be_node *node = malloc(sizeof(be_node));
-	*node		  = (be_node){.type = type};
-
-	return node;
-}
-
-static void free_be_node(be_node *node) {
-	if (node->type == LIST) {
-		for (int i = 0; node->data.list_data[i] != NULL; i++) {
-			free_be_node(node->data.list_data[i]);
-		}
-		free(node->data.list_data);
-	}
-	if (node->type == STRING) {
-		free(node->data.str_data);
-	}
-	free(node);
-}
-
 static char advance(be_scanner *scanner) {
 	scanner->current++;
 	return scanner->current[-1];
@@ -71,6 +51,28 @@ static bool match(be_scanner *scanner, char expected) {
 	return true;
 }
 
+static be_node *create_be_node(be_type type) {
+	be_node *node = malloc(sizeof(be_node));
+	*node		  = (be_node){.type = type};
+
+	return node;
+}
+
+void be_node_free(be_node *node) {
+	if (node->type == LIST) {
+		if (node->data.list_data != NULL) {
+			for (int i = 0; node->data.list_data[i] != NULL; i++) {
+				be_node_free(node->data.list_data[i]);
+			}
+		}
+		free(node->data.list_data);
+	}
+	if (node->type == STRING) {
+		free(node->data.str_data);
+	}
+	free(node);
+}
+
 static be_node *parse_be_string(be_scanner *scanner) {
 	while (isdigit(peek(scanner))) {
 		advance(scanner);
@@ -80,8 +82,6 @@ static be_node *parse_be_string(be_scanner *scanner) {
 	str_len =
 		strncpy(str_len, scanner->start, scanner->current - scanner->start);
 
-	printf("str_len %s\n", str_len);
-
 	int n_chars = strtol(str_len, NULL, 10);
 	free(str_len);
 
@@ -89,7 +89,6 @@ static be_node *parse_be_string(be_scanner *scanner) {
 
 	char *value = malloc(n_chars * sizeof(char));
 	value		= strncpy(value, scanner->current, n_chars);
-	printf("value %s\n", value);
 
 	scanner->current += n_chars;
 

@@ -21,3 +21,4 @@ be_node *parse_be_stream(char *be_string);
 void be_node_free(be_node *node);
 
 void pretty_print_tree(be_node *root);
+
