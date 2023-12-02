@@ -3,6 +3,7 @@
 // dictionaries.
 
 #include "bencoding.h"
+#include "dict.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -16,6 +17,8 @@ typedef struct be_scanner {
 } be_scanner;
 
 static be_node *parse_be_list(be_scanner *scanner);
+
+static be_node *parse_be(be_scanner *scanner);
 
 static void be_scanner_free(be_scanner *scanner) {
 	free(scanner->current);
@@ -133,25 +136,6 @@ static be_node *parse_be_number(be_scanner *scanner) {
 	return node;
 }
 
-static be_node *parse_be(be_scanner *scanner) {
-	be_node *root  = NULL;
-	scanner->start = scanner->current;
-
-	while (!isAtEnd(scanner)) {
-		char c = peek(scanner);
-		if (isdigit(c)) {
-			root = parse_be_string(scanner);
-		}
-		if (c == 'i') {
-			root = parse_be_number(scanner);
-		}
-		if (c == 'l') {
-			root = parse_be_list(scanner);
-		}
-	}
-	return root;
-}
-
 static be_node *parse_be_list(be_scanner *scanner) {
 	be_node *node		 = create_be_node(LIST);
 	node->data.list_data = NULL;
@@ -202,6 +186,67 @@ static be_node *parse_be_list(be_scanner *scanner) {
 	return node;
 }
 
+static be_node *parse_be_dict(be_scanner *scanner) {
+	be_node *node		 = create_be_node(DICT);
+	node->data.dict_data = (struct dict *)create_dict();
+
+	if (!match(scanner, 'd')) {
+		return NULL;
+	}
+
+	if (match(scanner, 'e')) {
+		return node;
+	}
+
+	scanner->start = scanner->current;
+	be_node *key   = parse_be_string(scanner);
+	if (key == NULL)
+		return NULL;
+
+	char *key_value = strdup(key->data.str_data);
+	be_node_free(key);
+
+	while (!match(scanner, 'e') && !isAtEnd(scanner)) {
+		scanner->start = scanner->current;
+		char c		   = peek(scanner);
+
+		be_node *element;
+		if (isdigit(c)) {
+			element = parse_be_string(scanner);
+		}
+		if (c == 'i') {
+			element = parse_be_number(scanner);
+		}
+		insert((dict *)node->data.dict_data, key_value, element);
+	}
+
+	advance(scanner);
+
+	return node;
+}
+
+static be_node *parse_be(be_scanner *scanner) {
+	be_node *root  = NULL;
+	scanner->start = scanner->current;
+
+	while (!isAtEnd(scanner)) {
+		char c = peek(scanner);
+		if (isdigit(c)) {
+			root = parse_be_string(scanner);
+		}
+		if (c == 'i') {
+			root = parse_be_number(scanner);
+		}
+		if (c == 'l') {
+			root = parse_be_list(scanner);
+		}
+		if (c == 'd') {
+			root = parse_be_dict(scanner);
+		}
+	}
+	return root;
+}
+
 be_node *parse_be_stream(char *be_string) {
 	char	   *be_string_dup = strdup(be_string);
 	be_scanner *scanner = &(be_scanner){.start = 0, .current = be_string_dup};
@@ -233,7 +278,14 @@ void pretty_print_node(be_node *node, int indent) {
 		}
 		break;
 	case DICT:
-		printf("Type: Dict - ");
+		printf("Type: Dict - Value:\n");
+		struct dict *map = node->data.dict_data;
+		if (data == NULL) {
+			return;
+		}
+		printf("%*s|- ", indent, "");
+		pretty_print_node(get(map, "spam"), indent + 1);
+
 		break;
 	default:
 		printf("Unknown type %d\n", node->type);
