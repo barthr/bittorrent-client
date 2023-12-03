@@ -2,12 +2,9 @@
 
 #include <stdint.h>
 
-// Forward declaration of be_node from bencoding.h
-struct be_node;
-
 typedef struct dict_entry {
   char *key;
-  struct be_node *value;
+  void *value;
   struct dict_entry *next;
 } dict_entry;
 
@@ -19,8 +16,12 @@ typedef struct {
 
 dict *create_dict();
 
-void insert(dict *dict, char *key, struct be_node *value);
+void dict_insert(dict *dict, char *key, void *value);
 
-struct be_node *get(dict *dict, char *key);
+void *dict_get(dict *dict, char *key);
 
 void free_dict(dict *dict);
+
+#define DICT_FOR_EACH(item, dict)                                              \
+  for (int i = 0; i < HASH_MAP_SIZE; i++)                                      \
+    for (dict_entry *item = (dict)->buckets[i]; item; item = item->next)

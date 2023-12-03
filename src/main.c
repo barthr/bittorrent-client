@@ -12,13 +12,12 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  dict *map = create_dict();
-  insert(map, "hello", node);
-  be_node *item = get(map, "hello");
+  // dict *map = create_dict();
+  // dict_insert(map, "hello", node);
 
-  pretty_print_tree(item);
+  pretty_print_tree(node);
 
   be_node_free(node);
-  free_dict(map);
+  // free_dict(map);
   return 0;
 }

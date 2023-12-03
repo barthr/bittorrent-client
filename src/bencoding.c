@@ -187,7 +187,7 @@ static be_node *parse_be_list(be_scanner *scanner) {
 
 static be_node *parse_be_dict(be_scanner *scanner) {
   be_node *node = create_be_node(DICT);
-  node->data.dict_data = (struct dict *)create_dict();
+  node->data.dict_data = create_dict();
 
   if (!match(scanner, 'd')) {
     return NULL;
@@ -216,7 +216,9 @@ static be_node *parse_be_dict(be_scanner *scanner) {
     if (c == 'i') {
       element = parse_be_number(scanner);
     }
-    insert((dict *)node->data.dict_data, key_value, element);
+    if (element != NULL) {
+      dict_insert(node->data.dict_data, key_value, element);
+    }
   }
 
   advance(scanner);
@@ -259,13 +261,14 @@ be_node *parse_be_stream(char *be_string) {
 void pretty_print_node(be_node *node, int indent) {
   switch (node->type) {
   case STRING:
-    printf("Type: String - Value: %s\n", node->data.str_data);
+    printf("Type: %s - Value: %s\n", BE_TYPE_STRING(node), node->data.str_data);
     break;
   case NUMBER:
-    printf("Type: Number - Value: %ld\n", node->data.int_data);
+    printf("Type: %s - Value: %ld\n", BE_TYPE_STRING(node),
+           node->data.int_data);
     break;
   case LIST:
-    printf("Type: List - Value: \n");
+    printf("Type: %s - Value: \n", BE_TYPE_STRING(node));
     be_node **data = node->data.list_data;
     if (data == NULL) {
       return;
@@ -278,12 +281,15 @@ void pretty_print_node(be_node *node, int indent) {
     break;
   case DICT:
     printf("Type: Dict - Value:\n");
-    struct dict *map = node->data.dict_data;
+    dict *map = node->data.dict_data;
     if (data == NULL) {
       return;
     }
-    printf("%*s|- ", indent, "");
-    pretty_print_node(get(map, "spam"), indent + 1);
+
+    DICT_FOR_EACH(item, map) {
+      printf("%*s|- [%s] => ", indent, "", item->key);
+      pretty_print_node((be_node *)item->value, indent + 3);
+    }
 
     break;
   default:

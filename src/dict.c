@@ -32,7 +32,7 @@ static unsigned int hash(char *key) {
   return hash % HASH_MAP_SIZE;
 }
 
-static dict_entry *create_dict_entry(char *key, struct be_node *value) {
+static dict_entry *create_dict_entry(char *key, void *value) {
   dict_entry *entry = (dict_entry *)malloc(sizeof(struct dict_entry));
 
   entry->key = strdup(key);
@@ -42,7 +42,7 @@ static dict_entry *create_dict_entry(char *key, struct be_node *value) {
   return entry;
 }
 
-void insert(dict *dict, char *key, struct be_node *value) {
+void dict_insert(dict *dict, char *key, void *value) {
   unsigned int index = hash(key);
   dict_entry *entry = create_dict_entry(key, value);
 
@@ -54,7 +54,7 @@ void insert(dict *dict, char *key, struct be_node *value) {
   }
 }
 
-struct be_node *get(dict *map, char *key) {
+void *dict_get(dict *map, char *key) {
   unsigned int index = hash(key);
   dict_entry *current = map->buckets[index];
 

@@ -1,11 +1,18 @@
 #pragma once
 
+#include "dict.h"
 #include <stdint.h>
 
 typedef enum { UNKNOWN, STRING, NUMBER, LIST, DICT } be_type;
 
-// Forward declaration of dict from dict.h
-struct dict;
+#define BE_TYPE_STRING(node)                                                   \
+  _Generic((node),                                                             \
+      be_node *: (node)->type == NUMBER ? "NUMBER"                             \
+      : (node)->type == STRING          ? "STRING"                             \
+      : (node)->type == LIST            ? "LIST"                               \
+      : (node)->type == DICT            ? "DICT"                               \
+                                        : "UNKNOWN",                                      \
+      default: "UNKNOWN")
 
 typedef struct be_node {
   be_type type;
@@ -14,7 +21,7 @@ typedef struct be_node {
     int64_t int_data;
     char *str_data;
     struct be_node **list_data;
-    struct dict *dict_data;
+    dict *dict_data;
   } data;
 
 } be_node;
